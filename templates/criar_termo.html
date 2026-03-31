@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Criar Novo Termo
+{% endblock %}
+
+{% block content %}
+<h1>Criar Novo Termo de Responsabilidade</h1>
+<hr>
+
+<form method="POST">
+    <div class="row">
+        <!-- Coluna da Esquerda -->
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label for="tipo_termo" class="form-label">Tipo de Termo</label>
+                <select class="form-select" id="tipo_termo" name="tipo_termo" required>
+                    <option selected disabled value="">Selecione...</option>
+                    {% for tipo in tipos_termo %}
+                    <option value="{{ tipo }}">{{ tipo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="mb-3">
+                <label for="nome_usuario" class="form-label">Nome do Usuário (do AD)</label>
+                <input type="text" class="form-control" id="nome_usuario" name="nome_usuario" placeholder="Será preenchido via AD" readonly>
+            </div>
+            
+            <div class="mb-3">
+                <label for="cpf_usuario" class="form-label">CPF (do AD)</label>
+                <input type="text" class="form-control" id="cpf_usuario" name="cpf_usuario" placeholder="Será preenchido via AD" readonly>
+            </div>
+        </div>
+
+        <!-- Coluna da Direita -->
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label for="equipamento" class="form-label">Equipamento</label>
+                <input type="text" class="form-control" id="equipamento" name="equipamento" placeholder="Ex: Notebook Dell Vostro" required>
+            </div>
+            
+             <div class="mb-3">
+                <label for="patrimonio" class="form-label">Patrimônio</label>
+                <input type="text" class="form-control" id="patrimonio" name="patrimonio" placeholder="Ex: 123456" required>
+            </div>
+
+            <div class="mb-3">
+                <label for="estado_equipamento" class="form-label">Estado do Equipamento</label>
+                <select class="form-select" id="estado_equipamento" name="estado_equipamento" required>
+                     <option selected disabled value="">Selecione...</option>
+                    {% for estado in estados_equipamento %}
+                    <option value="{{ estado }}">{{ estado }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <hr>
+    
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+        <a href="{{ url_for('index') }}" class="btn btn-secondary me-md-2">Cancelar</a>
+        <button type="submit" class="btn btn-success">Gerar Termo</button>
+    </div>
+</form>
+
+{% endblock %}
