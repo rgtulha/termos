@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Termos - AGEHAB</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f7f6; }
+        .container { max-width: 800px; }
+        .card { border-radius: 0.5rem; }
+        .user-select-item { cursor: pointer; }
+        .user-select-item:hover { background-color: #e9ecef; }
+        #cartTable th { font-weight: 500; }
+        #cartTable { display: none; }
+        /* Adiciona um cursor de "fechar" ao balão */
+        .popover { cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="container my-5">
+        
+        <div class="card shadow-sm">
+            <div class="card-body p-5">
+                <h2 class="card-title mb-4">Gerador de Termos de Responsabilidade</h2>
+
+                <form id="termForm">
+                    <fieldset>
+                        <legend class="h5 mb-3">1. Dados Principais do Termo</legend>
+                        
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Buscar Usuário (AD):</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="username" placeholder="Digite o primeiro nome ou parte do nome">
+                                <button class="btn btn-outline-primary" type="button" id="searchUserBtn">Buscar no AD</button>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-8 mb-3">
+                                <label for="userName" class="form-label">Nome Completo Selecionado:</label>
+                                <input type="text" class="form-control" id="userName" readonly required>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="userCPF" class="form-label">CPF:</label>
+                                <input type="text" class="form-control" id="userCPF" readonly required
+                                       data-bs-toggle="popover"
+                                       data-bs-trigger="manual"
+                                       data-bs-placement="top"
+                                       data-bs-title="Erro de Validação"
+                                       data-bs-content="CPF INCORRETO. LIGUE NO 5057.">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-8 mb-3">
+                                <label for="templateName" class="form-label">Tipo de Termo (Template):</label>
+                                <select class="form-select" id="templateName" required>
+                                    <option value="">Selecione um modelo...</option>
+                                    {% for template in templates %}
+                                        <option value="{{ template }}">{{ template }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                             <div class="col-md-4 mb-3" id="validadeContainer" style="display: none;">
+                                <label for="dataValidade" class="form-label">Validade (Até):</label>
+                                <input type="date" class="form-control" id="dataValidade">
+                            </div>
+                        </div>
+
+                        <div class="row" id="transferenciaContainer" style="display: none;">
+                            <div class="col-md-6 mb-3">
+                                <label for="unidadeOrigem" class="form-label">Unidade de Origem:</label>
+                                <select class="form-select" id="unidadeOrigem">
+                                    <option value="" selected>Selecione...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="unidadeDestino" class="form-label">Unidade de Destino:</label>
+                                <select class="form-select" id="unidadeDestino">
+                                    <option value="" selected>Selecione...</option>
+                                </select>
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <hr class="my-4">
+
+                    <fieldset>
+                        <legend class="h5 mb-3">2. Itens de Equipamento</legend>
+                        <div class="row">
+                            <div class="col-md-5 mb-3">
+                                <label for="itemDescription" class="form-label">Equipamento:</label>
+                                <select class="form-select" id="itemDescription">
+                                    <option value="" selected disabled>Selecione um equipamento...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="itemPatrimonio" class="form-label">Nº Patrimônio:</label>
+                                <input type="text" class="form-control" id="itemPatrimonio" placeholder="Opcional">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="itemEstado" class="form-label">Estado:</label>
+                                <select class="form-select" id="itemEstado">
+                                    </select>
+                            </div>
+                        </div>
+                        <div class="d-grid gap-2 mb-3">
+                            <button class="btn btn-outline-info" type="button" id="addItemBtn">
+                                + Adicionar Equipamento à Lista
+                            </button>
+                        </div>
+                        <table class="table table-striped table-bordered" id="cartTable">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Equipamento</th>
+                                    <th scope="col">Patrimônio</th>
+                                    <th scope="col">Estado</th>
+                                    <th scope="col" style="width: 50px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="cartBody">
+                            </tbody>
+                        </table>
+                        <small id="cartHelp" class="form-text text-muted" style="display: none;">Adicione pelo menos um equipamento.</small>
+                    </fieldset>
+
+                    <hr class="my-4">
+
+                    <div id="alertArea"></div>
+                    <button type="submit" class="btn btn-success btn-lg w-100" id="generateBtn">
+                        Criar Termo
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="d-grid gap-2 mt-4">
+            <button class="btn btn-outline-primary" type="button" id="viewTermsBtn">
+                Ver Termos Criados
+            </button>
+        </div>
+    </div>
+
+    <div class="modal fade" id="userSelectModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Resultados da Busca</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Selecione o usuário correto:</p>
+                    <div id="userList" class="list-group"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="termsListModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Últimos Termos Criados</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="savedTermsList" class="list-group">
+                        <p class="text-muted">Carregando termos...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // O JavaScript completo e corrigido
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // --- Listas de Dados ---
+            const unidades = [
+                "AI (Auditoria Interna)", "CA (Conselho de Administração)", "COOPLANA (Coordenação de Planejamento Aquisitivo)",
+                "CS (Comunicação Setorial)", "DA (Diretoria Administrativa)", "DE (Diretoria de Engenharia e Obras)",
+                "DF (Diretoria Financeira)", "DG (Diretoria de Governança e Compliance)", "DS (Diretoria de Regularização Fundiária e de Desenvolvimento Social)",
+                "GAAL (Gerência Administrativa e Logística)", "GAC (Gerência Administrativa dos Colegiados)", "GACI (Gerência da Carteira do Patrimônio Imobiliário)",
+                "GAGP (Gerência de Gestão de Pessoas)", "GATI (Gerência de Tecnologia da Informação)", "GEAH (Gerência de Ajustes de Programas Habitacionais)",
+                "GEATI (Gerência de Análise Técnica Preliminar)", "GEMD (Gerência de Medições de Obras)", "GEOF (Gerência de Obras e Fiscalização)",
+                "GES (Gerência de Monitoramento de Empreendimentos com Subsídio)", "GFCS (Gerência de Acompanhamento de Créditos Subsidiados)",
+                "GFFI (Gerência Financeira)", "GFOR (Gerência de Orçamentos)", "GGGC (Gerência de Governança e Compliance)",
+                "GGMI (Gerência de Modernização Institucional)", "GGP (Gerência de Planejamento)", "GJAA (Gerência de Assuntos Administrativos)",
+                "GJAC (Gerência de Assuntos do Contencioso)", "GPCT (Gerência de Geoprocessamento e Topografia)",
+                "GPOP (Gerência de Orçamentos de Programas Habitacionais)", "GPPH (Gerência de Projetos Habitacionais)",
+                "GPPI (Gerência de Projetos de Implantação)", "GPPR (Gerência de Projetos de Reforma)", "GPRC (Gerência de Procedimentos Correcionais)",
+                "GSAL (Gerência do Programa do Aluguel Social)", "GSAR (Gerência de Cadastro, Análise de Requisitos e Atendimento)",
+                "GSG (Gerência da Secretaria Geral)", "GSOE (Gerência de Organização de Eventos)", "GSPE (Gerência de Gestão do Pós Entrega de Benefícios)",
+                "GSPF (Gerência de Gestão de Regularização Fundiária)", "GSPR (Gerência de Projetos Urbanísticos)", "GSSR (Gerência de Serviço Social)",
+                "NACC (Núcleo de Compras e Contratações)", "NFCT (Núcleo de Contabilidade)", "NGCI (Núcleo de Controle Interno)",
+                "NGPM (Núcleo de Planejamento e Monitoramento)", "OV (Ouvidoria)", "PJ (Procuradoria Jurídica)", "PR (Presidência)",
+                "SEA (Secretaria Executiva de Articulação Institucional)", "SGE (Secretaria Executiva de Gestão Estratégica)",
+                "SPO (Superintendência de Projetos e Orçamentos)", "VP (Vice-Presidência)"
+            ];
+            
+            const equipmentList = [
+                "Desktop HP EliteDesk 800 G2", "Desktop HP Pro 400 G9", "Desktop HP ProDesk 600 G6",
+                "Desktop OptiPlex 3050", "Desktop Positivo Master 570", "Desktop ThinkCentre M75s Gen 2",
+                "Monitor AOC 24P1U", "Monitor HP 22h G4", "Monitor Itautec E2011PX",
+                "Monitor Itautec W1942PE", "Monitor Positivo 20M35PD", "Monitor Positivo 22MP55PQ",
+                "Monitor Samsung S19C301F", "Notebook HP Probook 640 G8", "Notebook Lenovo E430"
+            ];
+
+            const estadoList = ["BOM", "ÓTIMO", "REGULAR", "PÉSSIMO", "RECUPERÁVEL", "INUTILIZÁVEL"];
+
+            // --- Seletores ---
+            const searchBtn = document.getElementById('searchUserBtn');
+            const termForm = document.getElementById('termForm');
+            const generateBtn = document.getElementById('generateBtn');
+            const usernameInput = document.getElementById('username');
+            const userNameOutput = document.getElementById('userName');
+            const userCPFOutput = document.getElementById('userCPF');
+            const alertArea = document.getElementById('alertArea');
+            
+            // Modais
+            const userSelectModal = new bootstrap.Modal(document.getElementById('userSelectModal'));
+            const userListDiv = document.getElementById('userList');
+            const viewTermsBtn = document.getElementById('viewTermsBtn');
+            const termsListModal = new bootstrap.Modal(document.getElementById('termsListModal'));
+            const savedTermsList = document.getElementById('savedTermsList');
+            
+            // Campos Condicionais
+            const templateSelect = document.getElementById('templateName');
+            const validadeContainer = document.getElementById('validadeContainer');
+            const transferenciaContainer = document.getElementById('transferenciaContainer');
+            const selectOrigem = document.getElementById('unidadeOrigem');
+            const selectDestino = document.getElementById('unidadeDestino');
+            
+            // Seletores do "Carrinho"
+            const addItemBtn = document.getElementById('addItemBtn');
+            const cartTable = document.getElementById('cartTable');
+            const cartBody = document.getElementById('cartBody');
+            const cartHelp = document.getElementById('cartHelp');
+            const itemDescriptionSelect = document.getElementById('itemDescription');
+            const itemPatrimonioInput = document.getElementById('itemPatrimonio');
+            const itemEstadoSelect = document.getElementById('itemEstado');
+            let equipamentosArray = []; 
+            
+            // Nomes dos Templates
+            const entregaFilename = 'TERMO DE RESPONSABILIDADE USO TEMPORÁRIO – ENTREGA.docx';
+            const transferenciaFilename = 'NOVO TERMO DE RESPONSABILIDADE - TRANSFERÊNCIA INTERNA DE BENS.docx';
+
+            // --- Lógica do Popover (Balão) ---
+            const cpfPopover = new bootstrap.Popover(userCPFOutput);
+            let cpfErrorTimer = null; 
+
+            // --- Preenchimento das Listas ---
+            unidades.forEach(unidade => {
+                selectOrigem.options[selectOrigem.options.length] = new Option(unidade, unidade);
+                selectDestino.options[selectDestino.options.length] = new Option(unidade, unidade);
+            });
+            equipmentList.forEach(equip => {
+                itemDescriptionSelect.options[itemDescriptionSelect.options.length] = new Option(equip, equip);
+            });
+            estadoList.forEach(estado => {
+                itemEstadoSelect.options[itemEstadoSelect.options.length] = new Option(estado, estado);
+            });
+            itemEstadoSelect.value = "BOM";
+
+            // --- Evento: Mostrar/Esconder Campos Condicionais ---
+            templateSelect.addEventListener('change', () => {
+                const selectedValue = templateSelect.value;
+                if (selectedValue === entregaFilename) {
+                    validadeContainer.style.display = 'block';
+                } else {
+                    validadeContainer.style.display = 'none';
+                    document.getElementById('dataValidade').value = '';
+                }
+                if (selectedValue === transferenciaFilename) {
+                    transferenciaContainer.style.display = 'flex';
+                } else {
+                    transferenciaContainer.style.display = 'none';
+                    selectOrigem.value = '';
+                    selectDestino.value = '';
+                }
+            });
+
+            // --- Evento: Buscar Usuário (com lógica do Popover) ---
+            searchBtn.addEventListener('click', async () => {
+                // Limpa qualquer erro/timer/popover anterior
+                if (cpfErrorTimer) clearTimeout(cpfErrorTimer);
+                cpfPopover.hide();
+                userCPFOutput.classList.remove('is-invalid');
+
+                const partialName = usernameInput.value;
+                if (!partialName) { showAlert('Por favor, insira um nome para buscar.', 'warning'); return; }
+                const formData = new FormData();
+                formData.append('username', partialName);
+                try {
+                    const response = await fetch('/search_user', { method: 'POST', body: formData });
+                    const data = await response.json(); 
+                    if (!response.ok) { throw new Error(data.error || 'Erro desconhecido'); }
+                    userListDiv.innerHTML = ''; 
+                    if (data.length === 0) { showAlert('Nenhum usuário encontrado com esse nome.', 'warning'); return; }
+                    if (data.length === 1) {
+                        selectUser(data[0].nome_completo, data[0].cpf);
+                        showAlert('Usuário único encontrado!', 'success');
+                    } else {
+                        data.forEach(user => {
+                            const item = document.createElement('a');
+                            item.href = '#'; item.className = 'list-group-item list-group-item-action user-select-item';
+                            item.textContent = `${user.nome_completo} (Login: ${user.login})`;
+                            item.dataset.name = user.nome_completo; item.dataset.cpf = user.cpf;
+                            item.addEventListener('click', (e) => { e.preventDefault(); selectUser(item.dataset.name, item.dataset.cpf); });
+                            userListDiv.appendChild(item);
+                        });
+                        userSelectModal.show();
+                    }
+                } catch (error) { showAlert(`Erro ao buscar usuário: ${error.message}`, 'danger'); }
+            });
+
+            // --- Função: Selecionar Usuário (com lógica do Popover) ---
+            function selectUser(name, cpf) {
+                const MENSAGEM_ERRO_CPF = "CPF INCORRETO. LIGUE NO 5057.";
+                
+                userNameOutput.value = name;
+                
+                if (cpf === MENSAGEM_ERRO_CPF) {
+                    userCPFOutput.value = '';
+                    userCPFOutput.classList.add('is-invalid'); // Borda vermelha
+                    cpfPopover.show(); // Mostra o balão
+
+                    // 1. Inicia o timer de 10 segundos
+                    if (cpfErrorTimer) clearTimeout(cpfErrorTimer); // Limpa o timer antigo
+                    cpfErrorTimer = setTimeout(() => {
+                        cpfPopover.hide();
+                        userCPFOutput.classList.remove('is-invalid');
+                        cpfErrorTimer = null;
+                    }, 10000); // 10000 ms = 10 segundos
+
+                } else {
+                    // CPF CORRETO
+                    if (cpfErrorTimer) clearTimeout(cpfErrorTimer);
+                    userCPFOutput.classList.remove('is-invalid');
+                    cpfPopover.hide();
+                    userCPFOutput.value = cpf; // Preenche o campo
+                }
+                
+                userSelectModal.hide(); 
+                usernameInput.value = '';
+            }
+            
+            // --- Evento: Fechar Popover ao Clicar nele ---
+            userCPFOutput.addEventListener('shown.bs.popover', () => {
+                const popoverElement = cpfPopover.getTipElement(); 
+                if (popoverElement) {
+                    popoverElement.addEventListener('click', () => {
+                        if (cpfErrorTimer) clearTimeout(cpfErrorTimer); 
+                        cpfPopover.hide();
+                        userCPFOutput.classList.remove('is-invalid');
+                    }, { once: true }); 
+                }
+            });
+
+            // --- Evento: Adicionar Item ao Carrinho ---
+            addItemBtn.addEventListener('click', () => {
+                const descricao = itemDescriptionSelect.value;
+                const patrimonio = itemPatrimonioInput.value;
+                const estado = itemEstadoSelect.value;
+                if (!descricao) { showAlert('Por favor, selecione um equipamento.', 'warning'); return; }
+                equipamentosArray.push({ descricao: descricao, patrimonio: patrimonio, estado: estado });
+                renderCart();
+                itemDescriptionSelect.value = '';
+                itemPatrimonioInput.value = '';
+                itemEstadoSelect.value = 'BOM';
+            });
+            
+            // --- Função: Desenhar a tabela do Carrinho ---
+            function renderCart() {
+                if (equipamentosArray.length === 0) { cartTable.style.display = 'none'; return; }
+                cartTable.style.display = 'table';
+                cartHelp.style.display = 'none';
+                cartBody.innerHTML = '';
+                equipamentosArray.forEach((item, index) => {
+                    const row = cartBody.insertRow();
+                    row.innerHTML = `
+                        <td>${item.descricao}</td>
+                        <td>${item.patrimonio}</td>
+                        <td>${item.estado}</td>
+                        <td><button type="button" class="btn btn-sm btn-danger btn-remove-item" data-index="${index}">&times;</button></td>
+                    `;
+                });
+            }
+
+            // --- Evento: Remover Item do Carrinho ---
+            cartBody.addEventListener('click', (event) => {
+                if (event.target.classList.contains('btn-remove-item')) {
+                    const index = parseInt(event.target.dataset.index, 10);
+                    equipamentosArray.splice(index, 1);
+                    renderCart();
+                }
+            });
+
+            // --- Evento: Criar Termo (com lógica do Popover) ---
+            termForm.addEventListener('submit', async (event) => {
+                event.preventDefault(); 
+                
+                if (cpfErrorTimer) clearTimeout(cpfErrorTimer);
+                cpfPopover.hide(); // Esconde o balão ao submeter
+                
+                generateBtn.disabled = true;
+                generateBtn.textContent = 'Salvando...';
+
+                const data = {
+                    template_name: document.getElementById('templateName').value,
+                    user_name: document.getElementById('userName').value,
+                    user_cpf: document.getElementById('userCPF').value,
+                    data_validade: document.getElementById('dataValidade').value,
+                    unidade_origem: document.getElementById('unidadeOrigem').value,
+                    unidade_destino: document.getElementById('unidadeDestino').value,
+                    itens: equipamentosArray 
+                };
+
+                if (!data.user_name || !data.template_name) {
+                    showAlert('Por favor, preencha os dados principais (Usuário e Tipo de Termo).', 'warning');
+                    generateBtn.disabled = false;
+                    generateBtn.textContent = 'Criar Termo';
+                    return;
+                }
+                if (data.itens.length === 0) {
+                    showAlert('Por favor, adicione pelo menos um equipamento à lista.', 'warning');
+                    cartHelp.style.display = 'block';
+                    cartHelp.classList.add('text-danger');
+                    generateBtn.disabled = false;
+                    generateBtn.textContent = 'Criar Termo';
+                    return;
+                }
+
+                try {
+                    const response = await fetch('/generate_term', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                    const result = await response.json();
+                    if (!response.ok) { throw new Error(result.error || 'Erro no servidor'); }
+
+                    showAlert(`Termo salvo com sucesso! (ID: ${result.termo.id})`, 'success');
+                    termForm.reset();
+                    document.getElementById('userName').value = '';
+                    document.getElementById('userCPF').value = '';
+                    validadeContainer.style.display = 'none';
+                    transferenciaContainer.style.display = 'none';
+                    equipamentosArray = [];
+                    renderCart();
+                    itemEstadoSelect.value = "BOM";
+                    userCPFOutput.classList.remove('is-invalid'); // Limpa o erro do CPF
+
+                } catch (error) {
+                    showAlert(`Erro ao salvar termo: ${error.message}`, 'danger');
+                } finally {
+                    generateBtn.disabled = false;
+                    generateBtn.textContent = 'Criar Termo';
+                }
+            });
+            
+            // --- Evento: Abrir Modal de Termos ---
+            viewTermsBtn.addEventListener('click', () => {
+                fetchSavedTerms();
+                termsListModal.show();
+            });
+
+            // --- Função: Mostrar Alerta ---
+            function showAlert(message, type) {
+                alertArea.innerHTML = `
+                    <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                        ${message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                `;
+            }
+
+            // --- Função: Buscar Termos Salvos (Correta) ---
+            async function fetchSavedTerms() {
+                try {
+                    savedTermsList.innerHTML = '<p class="text-muted">Carregando termos...</p>';
+                    const response = await fetch('/get_terms');
+                    if (!response.ok) { throw new Error('Falha ao carregar termos.'); }
+                    
+                    const termos = await response.json();
+                    savedTermsList.innerHTML = ''; 
+
+                    if (termos.length === 0) {
+                        savedTermsList.innerHTML = '<p class="text-muted">Nenhum termo salvo recentemente.</p>';
+                        return;
+                    }
+
+                    termos.forEach(termo => {
+                        const item = document.createElement('div');
+                        item.className = 'list-group-item';
+                        const dataGeracao = new Date(termo.data_geracao).toLocaleDateString('pt-BR');
+                        
+                        let validadeStr = '';
+                        if (termo.data_validade) { 
+                             const [ano, mes, dia] = termo.data_validade.split('-');
+                             validadeStr = ` (Validade: ${dia}/${mes}/${ano})`;
+                        }
+                        
+                        let transferenciaStr = '';
+                        if (termo.unidade_origem && termo.unidade_destino) {
+                            transferenciaStr = ` (De: ${termo.unidade_origem} | Para: ${termo.unidade_destino})`;
+                        }
+
+                        let itensHtml = '<ul class="list-unstyled mt-2 mb-0">';
+                        termo.itens.forEach(it => {
+                            let p = it.patrimonio ? ` (Pat: ${it.patrimonio})` : '';
+                            let e = it.estado ? ` [${it.estado}]` : '';
+                            itensHtml += `<li><small class="text-muted"> &ndash; ${it.descricao}${p}${e}</small></li>`;
+                        });
+                        itensHtml += '</ul>';
+
+                        item.innerHTML = `
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong class="d-block">${termo.nome_usuario}</strong>
+                                    <small class="d-block text-muted">Salvo em: ${dataGeracao}${validadeStr}${transferenciaStr}</small>
+                                </div>
+                                <a href="/download_termo/${termo.id}" 
+                                   target="_blank" 
+                                   class="btn btn-sm btn-outline-secondary">
+                                    Download PDF
+                                </a>
+                            </div>
+                            ${itensHtml}
+                        `;
+                        savedTermsList.appendChild(item);
+                    });
+
+                } catch (error) {
+                    console.error("Falha ao carregar termos:", error);
+                    savedTermsList.innerHTML = `<p class="text-danger">Erro ao carregar termos. ${error.message}</p>`;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
